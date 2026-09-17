@@ -82,6 +82,11 @@ resource "azurerm_network_interface" "jumpbox_nic" {
     }
 }
 
+resource "tls_private_key" "jumpbox_ssh" {
+    algorithm = "RSA"
+    rsa_bits = 4096
+}
+
 resource "azurerm_linux_virtual_machine" "jumpbox_vm" {
     name = "vm-jumpbox-hub"
     resource_group_name = azurerm_resource_group.hub_rg.name
@@ -92,7 +97,7 @@ resource "azurerm_linux_virtual_machine" "jumpbox_vm" {
 
     admin_ssh_key {
         username = "azureuser"
-        public_key = file("~/.ssh/id_rsa.pub")
+        public_key = tls_private_key.jumpbox_ssh.public_key_openssh
     }
 
     os_disk {
