@@ -4,3 +4,6 @@
 ai_package/
 *.gguf
 *.whl
+
+*.pem
+*.tfplan

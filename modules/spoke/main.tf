@@ -98,7 +98,7 @@ resource "azurerm_network_interface" "nic_worker" {
 
 resource "tls_private_key" "workload_ssh" {
   algorithm = "RSA"
-  rsa_bits = 4096
+  rsa_bits  = 4096
 }
 
 resource "azurerm_linux_virtual_machine" "workload_vm" {

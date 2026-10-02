@@ -44,7 +44,7 @@ Due to the strict Air-Gapped nature of the Spoke VNet, standard package managers
 Azure Blob Storage is configured with `public_network_access = "Disabled"`. The AI VM communicates with the storage account exclusively through an **Azure Private Endpoint** and a Private DNS Zone (`privatelink.blob.core.windows.net`), ensuring data never traverses the public internet.
 
 ### 5. Automated CI/CD
-Integrated with GitHub Actions. Every push to the `main` branch triggers an automated pipeline that checks code formatting, initializes providers, and validates the Terraform syntax, catching configuration drifts and hardcoded dependencies early.
+Integrated with GitHub Actions. Every push to the `main` branch triggers an automated pipeline that checks code formatting, initializes providers, and validates the Terraform syntax, catching syntax errors and hardcoded dependencies early.
 
 ## 🚀 Deployment Guide
 
@@ -57,7 +57,7 @@ Integrated with GitHub Actions. Every push to the `main` branch triggers an auto
 git clone <your-repo-url>
 cd azure-enterprise-network
 terraform init
-terraform apply -auto-approve
+terraform apply -var="admin_ip_range=x.x.x.x/32" -auto-approve
 ```
 
 ### Step 2: Accessing the Environment (Extracting Keys)
@@ -78,14 +78,19 @@ ssh -i hub_key.pem azureuser@<JUMPBOX_PUBLIC_IP>
 ```
 
 ### Step 3: Executing the AI Pipeline (Air-Gapped)
-> **Note:** The `ai_package/` directory (containing the 430MB Qwen LLM and offline `.whl` Python dependencies) is excluded from this GitHub repository to avoid large file storage limits. In a real-world enterprise environment, these heavy artifacts would be automatically pulled from a secure internal artifact registry (e.g., Azure Artifacts, Nexus) during the VM provisioning phase. The steps below demonstrate the manual execution used for the Proof of Concept.
+> **Note:** The `ai_package/` directory (containing the 430MB Qwen LLM and offline `.whl` Python dependencies) is excluded from this GitHub repository to avoid large file storage limits. In a real-world enterprise environment, these heavy artifacts would be automatically pulled from a secure internal artifact registry (e.g., Azure Artifacts, Nexus) during the VM provisioning phase. The steps below demonstrate the manual execution used for the enterprise architecture.
 
 To prove the Zero Outbound isolation works, the Python AI script is executed using offline wheel packages (`.whl`) without `pip` or internet access:
 
-1. Transfer the offline packages and script to the Spoke VM via the Jumpbox:
+1. Download the required offline packages and models:
 ```bash
-scp -i spoke_key.pem src/audit_processor.py azureuser@<WORKLOAD_PRIVATE_IP>:~
-scp -r -i spoke_key.pem ai_package azureuser@<WORKLOAD_PRIVATE_IP>:~
+chmod +x src/download_offline_packages.sh
+./src/download_offline_packages.sh
+```
+2. Transfer the offline packages and script to the Spoke VM via the Jumpbox:
+```bash
+scp -o ProxyCommand="ssh -W %h:%p -i hub_key.pem azureuser@<JUMPBOX_PUBLIC_IP>" -i spoke_key.pem src/audit_processor.py azureuser@<WORKLOAD_PRIVATE_IP>:~
+scp -o ProxyCommand="ssh -W %h:%p -i hub_key.pem azureuser@<JUMPBOX_PUBLIC_IP>" -r -i spoke_key.pem ai_package azureuser@<WORKLOAD_PRIVATE_IP>:~
 ```
 2. Connect to the Spoke VM and extract the packages using Python's built-in `zipfile` (bypassing `pip`):
 ```bash
@@ -95,6 +100,7 @@ export PYTHONPATH="$PWD/libs"
 ```
 3. Inject the Storage Account connection string and execute the model:
 ```bash
+# Retrieve connection string (e.g. from Azure Portal or az cli: az storage account show-connection-string --name <storage_account_name> --resource-group <resource_group_name>)
 export AZURE_STORAGE_CONNECTION_STRING="<YOUR_CONNECTION_STRING>"
 python3 audit_processor.py
 ```
@@ -107,4 +113,6 @@ terraform destroy -auto-approve
 ```
 
 ## 🛡️ CI/CD Status
+[![Terraform](https://img.shields.io/badge/Terraform-1.8+-623CE4?logo=terraform&logoColor=white)](https://www.terraform.io/)
 [![Terraform CI](https://github.com/Elxeoo/azure-enterprise-network/actions/workflows/terraform.yml/badge.svg)](https://github.com/Elxeoo/azure-enterprise-network/actions/workflows/terraform.yml)
+

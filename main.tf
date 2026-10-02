@@ -2,6 +2,7 @@ module "hub" {
   source            = "./modules/hub"
   location          = var.location
   hub_address_space = var.hub_address_space
+  admin_ip_range    = var.admin_ip_range
 }
 
 module "spoke" {

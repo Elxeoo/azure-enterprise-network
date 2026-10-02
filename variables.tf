@@ -21,3 +21,8 @@ variable "storage_account_name" {
   type        = string
   default     = "stenterprisecan01"
 }
+
+variable "admin_ip_range" {
+  description = "admin_ip_range"
+  type        = string
+}
